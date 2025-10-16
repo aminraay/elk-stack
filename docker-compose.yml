@@ -3,8 +3,9 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.4
     container_name: elasticsearch
     environment:
-      - discovery.type=single-node
       - ES_JAVA_OPTS=${ES_JAVA_OPTS}
+      - ELASTIC_USERNAME=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
     ulimits:
       memlock:
         soft: -1
