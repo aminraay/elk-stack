@@ -36,6 +36,8 @@ services:
       - "5000:5000/udp"
     environment:
       - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+      - ELASTICSEARCH_USERNAME=logstash_system
+      - ELASTICSEARCH_PASSWORD=your_logstash_system_password
     networks:
       - elk
     depends_on:
@@ -51,6 +53,8 @@ services:
       - "5601:5601"
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=your_kibana_system_password
     networks:
       - elk
     depends_on:

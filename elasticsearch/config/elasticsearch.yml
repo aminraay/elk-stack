@@ -89,9 +89,9 @@ discovery.seed_hosts: ["elasticsearch"]
 # --------------------------------------------------------------------------------
 
 # Enable security features
-xpack.security.enabled: false
+xpack.security.enabled: true
 
-xpack.security.enrollment.enabled: false
+xpack.security.enrollment.enabled: true
 
 # Enable encryption for HTTP API client connections, such as Kibana, Logstash, and Agents
 xpack.security.http.ssl:
