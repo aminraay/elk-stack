@@ -4,7 +4,7 @@ services:
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
     ulimits:
       memlock:
         soft: -1
@@ -35,9 +35,10 @@ services:
       - "5000:5000/tcp"
       - "5000:5000/udp"
     environment:
-      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+      - LS_JAVA_OPTS=${LS_JAVA_OPTS}
       - ELASTICSEARCH_USERNAME=logstash_system
-      - ELASTICSEARCH_PASSWORD=your_logstash_system_password
+      - ELASTICSEARCH_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOSTS}
     networks:
       - elk
     depends_on:
@@ -52,9 +53,9 @@ services:
     ports:
       - "5601:5601"
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOSTS}
       - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=your_kibana_system_password
+      - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
     networks:
       - elk
     depends_on:
