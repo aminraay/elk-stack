@@ -20,8 +20,11 @@ services:
       - elk
     healthcheck:
       test:
-        ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
+        [
+          "CMD-SHELL",
+          "curl -u elastic:${ELASTIC_PASSWORD} -f http://localhost:9200/_cluster/health || exit 1",
+        ]
+      interval: 300s
       timeout: 10s
       retries: 5
 
