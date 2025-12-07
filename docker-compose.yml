@@ -1,35 +1,49 @@
+#version: "3"
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.4
-    container_name: elasticsearch
+  setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.1
     environment:
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
-      - ELASTIC_USERNAME=elastic
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+      - LOGSTASH_PASSWORD=${LOGSTASH_PASSWORD}
+    container_name: setup
+    command:
+      - bash
+      - -c
+      - |
+        echo "Waiting for Elasticsearch availability";
+        until curl -s http://elasticsearch:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
+        echo "Setting kibana_system password";
+        until curl -s -X POST -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" http://elasticsearch:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        until curl -s -X POST -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" http://elasticsearch:9200/_security/user/logstash_system/_password -d "{\"password\":\"${LOGSTASH_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "All done!";
+  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.7
+    container_name: elasticsearch
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./esdata:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
-      - "9300:9300"
-    networks:
-      - elk
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+      - cluster.name=elasticsearch
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.http.ssl.enabled=false
     healthcheck:
       test:
         [
           "CMD-SHELL",
           "curl -u elastic:${ELASTIC_PASSWORD} -f http://localhost:9200/_cluster/health || exit 1",
         ]
-      interval: 300s
+      interval: 10s
       timeout: 10s
       retries: 5
 
   logstash:
-    image: docker.elastic.co/logstash/logstash:8.17.4
+    image: docker.elastic.co/logstash/logstash:8.19.7
     container_name: logstash
     volumes:
       - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
@@ -41,35 +55,22 @@ services:
     environment:
       - LS_JAVA_OPTS=${LS_JAVA_OPTS}
       - ELASTICSEARCH_USERNAME=logstash_system
-      - ELASTICSEARCH_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}
+      - ELASTICSEARCH_PASSWORD=${LOGSTASH_PASSWORD}
       - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOSTS}
-    networks:
-      - elk
     depends_on:
       elasticsearch:
         condition: service_healthy
-
+    
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.17.4
+    image: docker.elastic.co/kibana/kibana:8.19.7
     container_name: kibana
-    volumes:
-      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:
-      - "5601:5601"
+      - 5601:5601
     environment:
-      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOSTS}
-      - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
-    networks:
-      - elk
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+    volumes:
+      - ./certs:/usr/share/kibana/config/certs:ro
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     depends_on:
-      elasticsearch:
-        condition: service_healthy
-
-networks:
-  elk:
-    driver: bridge
-
-volumes:
-  elasticsearch_data:
-    driver: local
+        elasticsearch:
+          condition: service_healthy
