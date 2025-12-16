@@ -113,40 +113,40 @@ services:
       generate-ssl:
         condition: service_completed_successfully
 
-  # kibana:
-  #   image: docker.elastic.co/kibana/kibana:8.19.7
-  #   container_name: kibana
-  #   ports:
-  #     - 5601:5601
-  #   environment:
-  #     - KIBANA_USERNAME=${KIBANA_USERNAME}
-  #     - KIBANA_PASSWORD=${KIBANA_PASSWORD}
-  #     - KIBANA_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
-  #   volumes:
-  #     - ./certs:/usr/share/kibana/config/certs:ro
-  #     - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
-  #   depends_on:
-  #     elasticsearch:
-  #       condition: service_healthy
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.19.7
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      - KIBANA_USERNAME=${KIBANA_USERNAME}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+      - KIBANA_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
+    volumes:
+      - ./certs:/usr/share/kibana/config/certs:ro
+      - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
-  # logstash:
-  #   image: docker.elastic.co/logstash/logstash:8.19.7
-  #   container_name: logstash
-  #   volumes:
-  #     - ./certs:/usr/share/logstash/config/certs:ro
-  #     - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-  #     - ./configs/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-  #   ports:
-  #     - "9600:9600"
-  #     - "5000:5000/tcp"
-  #     - "5000:5000/udp"
-  #   environment:
-  #     - LS_JAVA_OPTS=${LS_JAVA_OPTS}
-  #     - ELASTIC_USERNAME=${ELASTIC_USERNAME}
-  #     - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-  #   depends_on:
-  #     elasticsearch:
-  #       condition: service_healthy
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.19.7
+    container_name: logstash
+    volumes:
+      - ./certs:/usr/share/logstash/config/certs:ro
+      - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./configs/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    ports:
+      - "9600:9600"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    environment:
+      - LS_JAVA_OPTS=${LS_JAVA_OPTS}
+      - ELASTIC_USERNAME=${ELASTIC_USERNAME}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
 networks:
   elk:
