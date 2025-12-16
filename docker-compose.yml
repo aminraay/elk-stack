@@ -1,12 +1,79 @@
 services:
-  setup:
+  generate-ssl:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.7
+    container_name: generate_ssl
+    volumes:
+      - ./certs:/usr/share/elasticsearch/config/certs
+    command:
+      - bash
+      - -c
+      - |
+        echo "==== Checking for existing certificates ====";
+        if [ -f "/usr/share/elasticsearch/config/certs/ca.crt" ]; then
+          echo "Certificates already exist, skipping generation";
+        else
+          echo "==== Generating SSL Certificates ====";
+          
+          # Create instances.yml for certificate generation
+          cat > /usr/share/elasticsearch/config/certs/instances.yml << 'EOF'
+        instances:
+          - name: es-data
+            dns:
+              - elasticsearch
+              - localhost
+            ip:
+              - 127.0.0.1
+          - name: kibana
+            dns:
+              - kibana
+              - localhost
+            ip:
+              - 127.0.0.1
+        EOF
+          
+          echo "Generating CA certificate...";
+          bin/elasticsearch-certutil ca --silent --pem -out /usr/share/elasticsearch/config/certs/ca.zip;
+          cd /usr/share/elasticsearch/config/certs;
+          unzip -o ca.zip;
+          
+          echo "Generating node certificates...";
+          cd /usr/share/elasticsearch;
+          bin/elasticsearch-certutil cert --silent --pem \
+            -out /usr/share/elasticsearch/config/certs/certs.zip \
+            --in /usr/share/elasticsearch/config/certs/instances.yml \
+            --ca-cert /usr/share/elasticsearch/config/certs/ca/ca.crt \
+            --ca-key /usr/share/elasticsearch/config/certs/ca/ca.key;
+          
+          cd /usr/share/elasticsearch/config/certs;
+          unzip -o certs.zip;
+          
+          # Move certificates to the root of certs directory
+          mv ca/ca.crt ./ca.crt;
+          mv ca/ca.key ./ca.key;
+          mv es-data/es-data.crt ./es-data.crt;
+          mv es-data/es-data.key ./es-data.key;
+          mv kibana/kibana.crt ./kibana.crt;
+          mv kibana/kibana.key ./kibana.key;
+          
+          # Cleanup
+          rm -rf ca es-data kibana ca.zip certs.zip instances.yml;
+          
+          # Set proper permissions
+          chmod 644 *.crt;
+          chmod 600 *.key;
+          
+          echo "َSSL certificates generated successfully";
+          ls -la /usr/share/elasticsearch/config/certs/;
+        fi
+
+  setup-users:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.7
     environment:
       - ELASTIC_USERNAME=${ELASTIC_USERNAME}
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - KIBANA_PASSWORD=${KIBANA_PASSWORD}
       - LOGSTASH_PASSWORD=${LOGSTASH_PASSWORD}
-    container_name: setup
+    container_name: setup_users
     command:
       - bash
       - -c
@@ -17,6 +84,9 @@ services:
         until curl -k -s -X POST -u "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://elasticsearch:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
         until curl -k -s -X POST -u "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://elasticsearch:9200/_security/user/logstash_system/_password -d "{\"password\":\"${LOGSTASH_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
         echo "All done!";
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.7
@@ -39,39 +109,45 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.19.7
-    container_name: kibana
-    ports:
-      - 5601:5601
-    environment:
-      - KIBANA_USERNAME=${KIBANA_USERNAME}
-      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
-      - KIBANA_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
-    volumes:
-      - ./certs:/usr/share/kibana/config/certs:ro
-      - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     depends_on:
-      elasticsearch:
-        condition: service_healthy
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.19.7
-    container_name: logstash
-    volumes:
-      - ./certs:/usr/share/logstash/config/certs:ro
-      - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./configs/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-    ports:
-      - "9600:9600"
-      - "5000:5000/tcp"
-      - "5000:5000/udp"
-    environment:
-      - LS_JAVA_OPTS=${LS_JAVA_OPTS}
-      - ELASTIC_USERNAME=${ELASTIC_USERNAME}
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
+      generate-ssl:
+        condition: service_completed_successfully
+
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.19.7
+  #   container_name: kibana
+  #   ports:
+  #     - 5601:5601
+  #   environment:
+  #     - KIBANA_USERNAME=${KIBANA_USERNAME}
+  #     - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+  #     - KIBANA_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
+  #   volumes:
+  #     - ./certs:/usr/share/kibana/config/certs:ro
+  #     - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:8.19.7
+  #   container_name: logstash
+  #   volumes:
+  #     - ./certs:/usr/share/logstash/config/certs:ro
+  #     - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+  #     - ./configs/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+  #   ports:
+  #     - "9600:9600"
+  #     - "5000:5000/tcp"
+  #     - "5000:5000/udp"
+  #   environment:
+  #     - LS_JAVA_OPTS=${LS_JAVA_OPTS}
+  #     - ELASTIC_USERNAME=${ELASTIC_USERNAME}
+  #     - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+
 networks:
   elk:
     driver: bridge
