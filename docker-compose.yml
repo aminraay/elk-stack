@@ -54,24 +54,24 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-
-  # logstash:
-  #   image: docker.elastic.co/logstash/logstash:8.19.7
-  #   container_name: logstash
-  #   volumes:
-  #     - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-  #     - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-  #   ports:
-  #     - "9600:9600"
-  #     - "5000:5000/tcp"
-  #     - "5000:5000/udp"
-  #   environment:
-  #     - LS_JAVA_OPTS=${LS_JAVA_OPTS}
-  #     - ELASTICSEARCH_USERNAME=logstash_system
-  #     - ELASTICSEARCH_PASSWORD=${LOGSTASH_PASSWORD}
-  #   depends_on:
-  #     elasticsearch:
-  #       condition: service_healthy
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.19.7
+    container_name: logstash
+    volumes:
+      - ./certs:/usr/share/logstash/config/certs:ro
+      - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./configs/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    ports:
+      - "9600:9600"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    environment:
+      - LS_JAVA_OPTS=${LS_JAVA_OPTS}
+      - ELASTIC_USERNAME=${ELASTIC_USERNAME}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 networks:
   elk:
     driver: bridge

@@ -39,10 +39,12 @@ path.data: /usr/share/logstash/data/logstash
 # This defaults to the number of the host's CPU cores.
 #
 # pipeline.workers: 2
+pipeline.workers: 6
 #
 # How many events to retrieve from inputs before sending to filters+workers
 #
 # pipeline.batch.size: 125
+pipeline.batch.size: 300
 #
 # How long to wait in milliseconds while polling for the next event
 # before dispatching an undersized batch to filters+outputs
@@ -230,6 +232,7 @@ path.data: /usr/share/logstash/data/logstash
 # append-only data files separated into pages. Default is 64mb
 #
 # queue.page_capacity: 64mb
+queue.page_capacity: 128mb
 #
 # If using queue.type: persisted, the maximum number of unread events in the queue.
 # Default is 0 (unlimited)
@@ -244,6 +247,7 @@ path.data: /usr/share/logstash/data/logstash
 # Default is 1024mb or 1gb
 #
 # queue.max_bytes: 1024mb
+queue.max_bytes: 4096mb 
 #
 # If using queue.type: persisted, the maximum number of acked events before forcing a checkpoint
 # Default is 1024, 0 for unlimited
@@ -260,15 +264,18 @@ path.data: /usr/share/logstash/data/logstash
 #
 # queue.checkpoint.interval: 1000
 #
+queue.type: persisted
 # ------------ Dead-Letter Queue Settings --------------
 # Flag to turn on dead-letter queue.
 #
 # dead_letter_queue.enable: false
+dead_letter_queue.enable: true
 
 # If using dead_letter_queue.enable: true, the maximum size of each dead letter queue. Entries
 # will be dropped if they would increase the size of the dead letter queue beyond this setting.
 # Default is 1024mb
 # dead_letter_queue.max_bytes: 1024mb
+dead_letter_queue.max_bytes: 1024mb
 
 # If using dead_letter_queue.enable: true, the interval in milliseconds where if no further events eligible for the DLQ
 # have been created, a dead letter queue file will be written. A low value here will mean that more, smaller, queue files
