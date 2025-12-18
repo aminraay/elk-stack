@@ -1,101 +1,127 @@
-# ELK Stack Docker Deployment
+# ELK Stack with Docker Compose
 
-Production-ready ELK Stack (Elasticsearch, Logstash, Kibana) with Docker Compose and centralized configuration management.
+A production-ready Elasticsearch, Logstash, and Kibana stack with automated SSL certificate generation and secure authentication.
 
-## Prerequisites
+## Getting Started
 
-* Docker Engine 20.10+
-* Docker Compose 2.0+
-* Minimum 4GB RAM available
-
-## Quick Start
-
-Clone and run:
+Clone the repository to your local machine.
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:aminraay/elk-stack.git
 cd elk-stack
-docker-compose up -d
 ```
 
-## Access Points
+Create the certificates directory that will hold SSL certificates.
 
-| Service       | URL                   | Port             |
-| ------------- | --------------------- | ---------------- |
-| Elasticsearch | http://localhost:9200 | 9200             |
-| Kibana        | http://localhost:5601 | 5601             |
-| Logstash      | -                     | 5044, 5000, 9600 |
-
-## Project Structure
-
-```
-elk-stack/
-├── docker-compose.yml
-├── elasticsearch/
-│   └── config/
-│       └── elasticsearch.yml
-├── logstash/
-│   ├── config/
-│   │   └── logstash.yml
-│   └── pipeline/
-│       └── logstash.conf
-└── kibana/
-    └── config/
-        └── kibana.yml
+```bash
+mkdir certs
 ```
 
-## Configuration
+Copy the environment template and configure your credentials.
 
-All services use external configuration files:
+```bash
+cp .env.example .env
+```
 
-* **Elasticsearch** : `elasticsearch/config/elasticsearch.yml`
-* **Logstash** : `logstash/config/logstash.yml` + `logstash/pipeline/logstash.conf`
-* **Kibana** : `kibana/config/kibana.yml`
+Edit the `.env` file and replace the placeholder passwords with strong, unique values. The encryption key can remain as is or be changed to a random 32-character string.
 
-Modify these files and restart services to apply changes.
+```
+ELASTIC_USERNAME=elastic
+ELASTIC_PASSWORD=your_strong_password_here
+KIBANA_USERNAME=kibana_system
+KIBANA_SYSTEM_PASSWORD=your_kibana_password_here
+LOGSTASH_SYSTEM_PASSWORD=your_logstash_password_here
+KIBANA_ENCRYPTION_KEY=JK9p6Lm7xF8zQ2wT6ve6Yu1bn4cX0dS3aE5gH4kP
+```
 
-## Commands
-
-Start stack:
+Start the stack with Docker Compose.
 
 ```bash
 docker-compose up -d
 ```
 
-Stop stack:
+The first run will automatically generate SSL certificates and configure user passwords. This process may take a few minutes.
+
+## Accessing the Services
+
+Once the stack is running, you can access the services at the following addresses.
+
+Kibana is available at `http://localhost:5601`. Log in with the elastic username and the password you set in the `.env` file.
+
+Elasticsearch API is available at `https://localhost:9200`. You can verify it's running with curl.
+
+```bash
+curl -k -u elastic:your_password https://localhost:9200
+```
+
+Logstash is listening on port 5000 for TCP and UDP traffic, with the monitoring API on port 9600.
+
+## Adding New Logstash Pipelines
+
+To add a new pipeline, create a configuration file in the `configs/logstash/pipeline` directory.
+
+```bash
+touch configs/logstash/pipeline/your-pipeline.conf
+```
+
+Register the pipeline in `configs/logstash/pipelines.yml` by adding a new entry.
+
+```yaml
+- pipeline.id: your-pipeline
+  path.config: "/usr/share/logstash/pipeline/your-pipeline.conf"
+```
+
+Update the docker-compose.yml to mount your new pipeline configuration.
+
+```yaml
+- ./configs/logstash/pipeline/your-pipeline.conf:/usr/share/logstash/pipeline/your-pipeline.conf:ro
+```
+
+Restart Logstash to apply the changes.
+
+```bash
+docker-compose restart logstash
+```
+
+## Certificate Management
+
+SSL certificates are generated automatically on first run. They are stored in the `certs` directory and include a Certificate Authority along with certificates for Elasticsearch and Kibana.
+
+If you need to regenerate certificates, remove the contents of the `certs` directory and restart the stack.
+
+```bash
+rm -rf certs/*
+docker-compose up -d
+```
+
+## Stopping the Stack
+
+To stop all services, run the following command.
 
 ```bash
 docker-compose down
 ```
 
-View logs:
+To stop and remove all data including Elasticsearch indices, add the volumes flag.
 
 ```bash
-docker-compose logs -f
+docker-compose down -v
 ```
 
-Restart service:
+## Project Structure
+
+The configuration files for each service are located in the `configs` directory. Elasticsearch settings are in `configs/elasticsearch/elasticsearch.yml`, Kibana settings in `configs/kibana/kibana.yml`, and Logstash configuration includes `logstash.yml`, `pipelines.yml`, and individual pipeline files in the `pipeline` subdirectory.
+
+SSL certificates are stored in the `certs` directory after generation.
+
+## Troubleshooting
+
+If services fail to start, check the logs for specific errors.
 
 ```bash
-docker-compose restart <service-name>
+docker-compose logs <service-name>
 ```
 
-## Health Check
+For Elasticsearch connection issues, verify that certificates were generated correctly by checking the `certs` directory for the presence of `.crt` and `.key` files.
 
-Verify Elasticsearch is running:
-
-```bash
-curl http://localhost:9200/_cluster/health
-```
-
-## Data Persistence
-
-Elasticsearch data is persisted in Docker volume `elasticsearch_data`.
-
-## Security Note
-
-This configuration has security features disabled for development purposes. For production use, enable xpack security and configure proper authentication.
-
-## License
-
-MIT
+If authentication fails, ensure the passwords in your `.env` file match and that the setup-users service completed successfully.
