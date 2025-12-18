@@ -135,7 +135,10 @@ services:
     volumes:
       - ./certs:/usr/share/logstash/config/certs:ro
       - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./configs/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./configs/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./configs/logstash/pipeline/linux.conf:/usr/share/logstash/pipeline/linux.conf:ro
+      - ./configs/logstash/pipeline/alerts.conf:/usr/share/logstash/pipeline/alerts.conf:ro
+
     ports:
       - "9600:9600"
       - "5000:5000/tcp"
