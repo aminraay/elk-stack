@@ -66,6 +66,37 @@ services:
           ls -la /usr/share/elasticsearch/config/certs/;
         fi
 
+  generate-truststore:
+    image: eclipse-temurin:11-jre
+    container_name: generate_truststore
+    volumes:
+      - ./certs:/certs
+    environment:
+      - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
+    depends_on:
+      generate-ssl:
+        condition: service_completed_successfully
+    command:
+      - bash
+      - -c
+      - |
+        echo "==== Checking for existing truststore ====";
+        if [ -f "/certs/truststore.jks" ]; then
+          echo "Truststore already exists, skipping generation";
+        else
+          echo "==== Generating Java truststore ====";
+          keytool -importcert \
+            -file /certs/ca.crt \
+            -keystore /certs/truststore.jks \
+            -storepass ${TRUSTSTORE_PASSWORD} \
+            -noprompt \
+            -alias elasticsearch-ca;
+          
+          chmod 644 /certs/truststore.jks;
+          echo "Truststore generated successfully";
+          ls -la /certs/truststore.jks;
+        fi
+
   setup-users:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.7
     environment:
