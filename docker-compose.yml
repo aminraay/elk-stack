@@ -183,8 +183,9 @@ services:
         condition: service_healthy
 
 networks:
-  elk:
+  elk-stack:
     driver: bridge
+    name: elk-stack
 
 volumes:
   esdata:
